@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тетрис</title>
+<style>
+  body { margin: 0; background: #171923; color: white; text-align: center; font: 18px sans-serif }
+  canvas { background: #090b12; border: 2px solid #555; max-width: 90vw }
+  p { margin: 12px }
+</style>
+<h1>Тетрис</h1>
+<p>Счёт: <b id="score">0</b></p>
+<canvas id="game" width="240" height="480"></canvas>
+<p>← → — движение · ↑ — поворот · ↓ — вниз<br>Пробел — сбросить · Enter — новая игра</p>
+<script>
+const canvas = document.getElementById('game'), ctx = canvas.getContext('2d');
+const score = document.getElementById('score');
+const shapes = [
+  [[1,1,1,1]], [[2,2],[2,2]], [[0,3,0],[3,3,3]],
+  [[0,4,4],[4,4,0]], [[5,5,0],[0,5,5]],
+  [[6,0,0],[6,6,6]], [[0,0,7],[7,7,7]]
+];
+const colors = ['', '#39d5ff', '#ffd447', '#bc77ff', '#58df88', '#ff667f', '#668cff', '#ffa34d'];
+let board, piece, x, y, points, over;
+function spawn() {
+  piece = shapes[Math.random() * shapes.length | 0].map(row => [...row]);
+  x = 3; y = 0;
+  if (blocked()) over = true;
+}
+function blocked(p = piece, px = x, py = y) {
+  return p.some((row, dy) => row.some((v, dx) =>
+    v && (px + dx < 0 || px + dx >= 10 || py + dy >= 20 || board[py + dy][px + dx])));
+}
+function reset() {
+  board = Array.from({length: 20}, () => Array(10).fill(0));
+  points = 0; over = false; score.textContent = points;
+  spawn(); draw();
+}
+function drop() {
+  if (over) return;
+  if (!blocked(piece, x, y + 1)) y++;
+  else {
+    piece.forEach((row, dy) => row.forEach((v, dx) => { if (v) board[y + dy][x + dx] = v; }));
+    board = board.filter(row => !row.every(Boolean));
+    points += (20 - board.length) * 100;
+    while (board.length < 20) board.unshift(Array(10).fill(0));
+    score.textContent = points;
+    spawn();
+  }
+  draw();
+}
+function paint(matrix, ox, oy) {
+  matrix.forEach((row, dy) => row.forEach((v, dx) => {
+    if (v) {
+      ctx.fillStyle = colors[v];
+      ctx.fillRect((ox + dx) * 24 + 1, (oy + dy) * 24 + 1, 22, 22);
+    }
+  }));
+}
+function draw() {
+  ctx.clearRect(0, 0, 240, 480);
+  paint(board, 0, 0); paint(piece, x, y);
+  if (over) {
+    ctx.fillStyle = '#000b'; ctx.fillRect(0, 200, 240, 70);
+    ctx.fillStyle = 'white'; ctx.font = '24px sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('Игра окончена', 120, 242);
+  }
+}
+document.addEventListener('keydown', e => {
+  if (!['ArrowLeft','ArrowRight','ArrowDown','ArrowUp','Space','Enter'].includes(e.code)) return;
+  e.preventDefault();
+  if (e.code === 'Enter') return reset();
+  if (over) return;
+  if (e.code === 'ArrowLeft' && !blocked(piece, x - 1, y)) x--;
+  if (e.code === 'ArrowRight' && !blocked(piece, x + 1, y)) x++;
+  if (e.code === 'ArrowDown') drop();
+  if (e.code === 'ArrowUp') {
+    const rotated = piece[0].map((_, i) => piece.map(row => row[i]).reverse());
+    if (!blocked(rotated)) piece = rotated;
+  }
+  if (e.code === 'Space') { while (!blocked(piece, x, y + 1)) y++; drop(); }
+  draw();
+});
+reset();
+setInterval(drop, 500);
+</script>
+</html>
